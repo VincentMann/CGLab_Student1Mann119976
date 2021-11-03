@@ -56,7 +56,7 @@ target_include_directories(framework PUBLIC framework/include)
 target_link_libraries(framework glbinding glfw ${GLFW_LIBRARIES})
 
 # include headers in all following applications
-include_directories(application/include)
+include_directories(application/include scenegraph)
 
 add_executable(solar_system application/source/application_solar.cpp)
 target_link_libraries(solar_system framework)
