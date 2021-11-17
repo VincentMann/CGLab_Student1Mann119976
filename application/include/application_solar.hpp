@@ -27,12 +27,15 @@ class ApplicationSolar : public Application {
 
   // Personal Code, draw single object--------------------
   void renderObject(geometry_node * object) const;
-  void renderChildrenObjects() const;
+  void renderPlanetObjects() const;
+  void renderStarObjects() const;
+  void renderOrbitObjects() const;
 
  protected:
   void initializeShaderPrograms();
   void initializeGeometry();
   void initializeSceneGraph();
+  void initializeStars();
   // update uniform values
   void uploadUniforms();
   // upload projection matrix
@@ -48,8 +51,13 @@ class ApplicationSolar : public Application {
   // camera projection matrix
   glm::fmat4 m_view_projection;
 
+  // Personal Code
   SceneGraph scene_graph_all;
   std::vector<geometry_node*> geometry_node_Vector;
+  model_object star_object;
+  std::vector<float> orbits;
+  model_object orbit_object;
+
 
 };
 
