@@ -8,10 +8,12 @@ class geometry_node : public Node{
     public:
     // Values
     model geometry;
+    glm::vec3 geo_color;
 
     // Methods
     model getGeometry();
     void setGeometry(model new_geometry);
+    using Node::Node;
 
 };
 
