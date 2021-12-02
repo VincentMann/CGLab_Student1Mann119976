@@ -23,6 +23,7 @@ using namespace gl;
 #include "scene_graph.hpp"
 #include "geometry_node.hpp"
 #include "camera_node.hpp"
+#include "point_light_node.hpp"
 #include "glm/gtx/string_cast.hpp"
 
 
@@ -32,6 +33,7 @@ using namespace gl;
 #include "node.cpp"
 #include "geometry_node.cpp"
 #include "scene_graph.cpp"
+#include "point_light_node.cpp"
 
 // ------------------Personal includes------------------------------------------------------------------------
 
@@ -130,6 +132,33 @@ void ApplicationSolar::renderObject(geometry_node * planet_geo) const{
 
   // bind the VAO to draw
   glBindVertexArray(planet_object.vertex_AO);
+
+
+  // Render Color of planet
+  // glUniform3f
+  GLint location = glGetUniformLocation(m_shaders.at("planet").handle, "geo_color");
+  glUniform3f(location, planet_geo->geo_color[0], planet_geo->geo_color[1], planet_geo->geo_color[2]);
+  
+
+  // Render lightning:
+  
+  // Light intensity:
+  location = glGetUniformLocation(m_shaders.at("planet").handle, "light_intensity");
+  glUniform1f(location, light_all->lightIntensity);
+
+  // Light Color:
+  location = glGetUniformLocation(m_shaders.at("planet").handle, "light_color");
+  glUniform3f(location, light_all->lightColor[0], light_all->lightColor[1], light_all->lightColor[2]);
+
+  // Light position:
+  glm::fvec4 light_position = light_all->getWorldTransform() * glm::fvec4{0.f, 0.f, 0.f, 1.f};
+  location = glGetUniformLocation(m_shaders.at("planet").handle, "light_position");
+  glUniform3f(location, light_position[0], light_position[1], light_position[2]);
+
+  // Camera position:
+  glm::fvec4 cam_position = m_view_transform * glm::fvec4{0.f, 0.f, 0.f, 1.f};
+  location = glGetUniformLocation(m_shaders.at("planet").handle, "cam_position");
+  glUniform3f(location, cam_position[0], cam_position[1], cam_position[2]);
 
   // draw bound vertex array using bound shader
   glDrawElements(planet_object.draw_mode, planet_object.num_elements, model::INDEX.type, NULL);
@@ -335,183 +364,149 @@ void ApplicationSolar::initializeSceneGraph(){
   scene_graph_all.root = root;
   root->setWorldTransform(position_matrix);
 
+  // Light Node--------------------------------------------------------
+  // Create light node, which contains position of light source
+
+  position_matrix = glm::translate({}, glm::vec3(0.f, 0.f, 0.f));
+  light_all = new point_light_node("light", root, position_matrix);
+  // lightIntensity and lightColor
+  light_all->setlightColor(glm::vec3(1.f, 1.f, 0.f));
+  light_all->lightIntensity = 1.f;
 
   // Sun Node--------------------------------------------------------
-  //Create hold, which contains position
-  Node * sun_hold = new Node();
-  sun_hold->name ="sun_hold";
-  sun_hold->parent = root;
-  root->addChildren(sun_hold);
+  // Create hold, which contains position
+  
   //Suns position_matrix
   position_matrix = glm::translate({}, glm::vec3(0.f, 0.f, 0.f));
-  sun_hold->setLocalTransform(position_matrix);
+  Node * sun_hold = new Node("sun_hold", root, position_matrix);
+  root->addChildren(sun_hold);
 
-  geometry_node * sun_geo = new geometry_node();
-  sun_geo->name = "sun_geo";
-  sun_geo->parent = sun_hold;
-  sun_hold->addChildren(sun_geo);
   position_matrix = glm::scale(glm::fmat4{}, glm::fvec3(3.5f, 3.5f, 3.5f));
-  sun_geo->setLocalTransform(position_matrix);
+  geometry_node * sun_geo = new geometry_node("sun_geo", sun_hold, position_matrix);
+  sun_hold->addChildren(sun_geo);
+  sun_geo->geo_color = glm::fvec3(1.f, 1.f, 0.f);
   geometry_node_Vector.push_back(sun_geo);
 
   // Planet Nodes
-
-  // Planet Node Earth------------------------------------------------
+  
+  // Planet Node Earth---------------------------------------------------------------------------------------------
   // Create hold, which contains position and rotation speed
-  Node * earth_hold = new Node();
-  earth_hold->name ="earth_hold";
-  earth_hold->parent = root;
-  root->addChildren(earth_hold);
-  // earths position_matrix
+  // earths position_matrix:
   position_matrix = glm::translate(glm::fmat4{}, glm::vec3(13.f, 0.f, 0.f));
   position_matrix = glm::rotate(glm::mat4{}, 1.f, glm::fvec3{0.0f, 1.0f, 0.0f}) * position_matrix;
-  earth_hold->setLocalTransform(position_matrix);
+  Node * earth_hold = new Node("earth_hold", root, position_matrix);
+  root->addChildren(earth_hold);
 
-  geometry_node * earth_geo = new geometry_node();
-  earth_geo->name = "earth_geo";
-  earth_geo->parent = earth_hold;
+  geometry_node * earth_geo = new geometry_node("earth_geo", earth_hold, glm::mat4{});
   earth_hold->addChildren(earth_geo);
+  earth_geo->geo_color = glm::fvec3(0.2f, 0.8f, 0.1f);
   geometry_node_Vector.push_back(earth_geo);
 
-  // Moon Node Earth Moon
-  Node * earthmoon_hold = new Node();
-  earthmoon_hold->name ="earthmoon_hold";
-  earthmoon_hold->parent = earth_hold;
+  // Moon Node Earth-Moon
+  position_matrix = glm::translate({}, glm::vec3(2.f, 0.f, 0.f));
+  Node * earthmoon_hold = new Node("earthmoon_hold", earth_hold, position_matrix);
   earth_hold->addChildren(earthmoon_hold);
   //moons position_matrix
-  position_matrix = glm::translate({}, glm::vec3(2.f, 0.f, 0.f));
-  earthmoon_hold->setLocalTransform(position_matrix);
-
-  geometry_node * earthmoon_geo = new geometry_node();
-  earthmoon_geo->name = "earthmoon_geo";
-  earthmoon_geo->parent = earthmoon_hold;
-  earthmoon_hold->addChildren(earthmoon_geo);
   // Scale down the moon to highlight from planets
   position_matrix = glm::scale(glm::fmat4{}, glm::fvec3(.4f, .4f, .4f));
-  earthmoon_geo->setLocalTransform(position_matrix);
+  geometry_node * earthmoon_geo = new geometry_node("earthmoon_geo", earthmoon_hold, position_matrix);
+  earthmoon_hold->addChildren(earthmoon_geo);
+  earthmoon_geo->geo_color = glm::fvec3(0.6f, 0.6f, 0.6f);
   geometry_node_Vector.push_back(earthmoon_geo);
 
 
-
-  // Planet Node Mercury------------------------------------------------
+  // Planet Node Mercury---------------------------------------------------------------------------------------------
   // Create hold, which contains position and rotation speed
-  Node * mercury_hold = new Node();
-  mercury_hold->name ="mercury_hold";
-  mercury_hold->parent = root;
-  root->addChildren(mercury_hold);
   // Mercury position_matrix
   position_matrix = glm::translate({}, glm::vec3(5.f, 0.f, 0.f));
   position_matrix = glm::rotate(glm::mat4{}, 0.7f, glm::fvec3{0.0f, 1.0f, 0.0f}) * position_matrix;
-  mercury_hold->setLocalTransform(position_matrix);
+  Node * mercury_hold = new Node("mercury_hold", root, position_matrix);
+  root->addChildren(mercury_hold);
 
-  geometry_node * mercury_geo = new geometry_node();
-  mercury_geo->name = "venus_geo";
-  mercury_geo->parent = mercury_hold;
+  geometry_node * mercury_geo = new geometry_node("mercury_geo", mercury_hold, glm::mat4{});
   mercury_hold->addChildren(mercury_geo);
+  mercury_geo->geo_color = glm::fvec3(0.7f, 0.4f, 0.f);
   geometry_node_Vector.push_back(mercury_geo);
 
-  // Planet Node Venus------------------------------------------------
+  // Planet Node Venus---------------------------------------------------------------------------------------------
   // Create hold, which contains position and rotation speed
-  Node * venus_hold = new Node();
-  venus_hold->name ="venus_hold";
-  venus_hold->parent = root;
-  root->addChildren(venus_hold);
   // venus position_matrix
   position_matrix = glm::translate({}, glm::vec3(9.f, 0.f, 0.f));
   position_matrix = glm::rotate(glm::mat4{}, 2.f, glm::fvec3{0.0f, 1.0f, 0.0f}) * position_matrix;
-  venus_hold->setLocalTransform(position_matrix);
-
-  geometry_node * venus_geo = new geometry_node();
-  venus_geo->name = "venus_geo";
-  venus_geo->parent = venus_hold;
+  Node * venus_hold = new Node("venus_hold", root, position_matrix);
+  root->addChildren(venus_hold);
+  
+  geometry_node * venus_geo = new geometry_node("venus_geo", venus_hold, glm::mat4{});
   venus_hold->addChildren(venus_geo);
+  venus_geo->geo_color = glm::fvec3(0.6f, 0.9f, 0.2f);
   geometry_node_Vector.push_back(venus_geo);
 
-
-  // Planet Node Mars------------------------------------------------
+  // Planet Node Mars---------------------------------------------------------------------------------------------
   // Create hold, which contains position and rotation speed
-  Node * mars_hold = new Node();
-  mars_hold->name ="mars_hold";
-  mars_hold->parent = root;
-  root->addChildren(mars_hold);
   // Mars position_matrix
   position_matrix = glm::translate(glm::fmat4{}, glm::vec3(16.f, 0.f, 0.f));
   position_matrix = glm::rotate(glm::mat4{}, 2.9f, glm::fvec3{0.0f, 1.0f, 0.0f}) * position_matrix;
-  mars_hold->setLocalTransform(position_matrix);
-
-  geometry_node * mars_geo = new geometry_node();
-  mars_geo->name = "mars_geo";
-  mars_geo->parent = mars_hold;
+  Node * mars_hold = new Node("mars_hold", root, position_matrix);
+  root->addChildren(mars_hold);
+  
+  geometry_node * mars_geo = new geometry_node("mars_geo", mars_hold, glm::mat4{});
   mars_hold->addChildren(mars_geo);
+  mars_geo->geo_color = glm::fvec3(0.8f, 0.2f, 0.2f);
   geometry_node_Vector.push_back(mars_geo);
 
-  // Planet Node Jupiter------------------------------------------------
+  // Planet Node Jupiter---------------------------------------------------------------------------------------------
   // Create hold, which contains position and rotation speed
-  Node * jup_hold = new Node();
-  jup_hold->name ="jup_hold";
-  jup_hold->parent = root;
-  root->addChildren(jup_hold);
   // Jupiter position_matrix
   position_matrix = glm::translate(glm::fmat4{}, glm::vec3(19.f, 0.f, 0.f));
   position_matrix = glm::rotate(glm::mat4{}, 3.6f, glm::fvec3{0.0f, 1.0f, 0.0f}) * position_matrix;
-  jup_hold->setLocalTransform(position_matrix);
-
-  geometry_node * jup_geo = new geometry_node();
-  jup_geo->name = "jup_geo";
-  jup_geo->parent = jup_hold;
+  Node * jup_hold = new Node("jup_hold", root, position_matrix);
+  root->addChildren(jup_hold);
+  
+  geometry_node * jup_geo = new geometry_node("jup_geo", jup_hold, glm::mat4{});
   jup_hold->addChildren(jup_geo);
+  jup_geo->geo_color = glm::fvec3(0.9f, 0.5f, 0.f);
   geometry_node_Vector.push_back(jup_geo);
 
-  // Planet Node Saturn------------------------------------------------
+  // Planet Node Saturn---------------------------------------------------------------------------------------------
   // Create hold, which contains position and rotation speed
-  Node * sat_hold = new Node();
-  sat_hold->name ="sat_hold";
-  sat_hold->parent = root;
-  root->addChildren(sat_hold);
   // Saturn position_matrix
   position_matrix = glm::translate(glm::fmat4{}, glm::vec3(22.f, 0.f, 0.f));
   position_matrix = glm::rotate(glm::mat4{}, 4.9f, glm::fvec3{0.0f, 1.0f, 0.0f}) * position_matrix;
-  sat_hold->setLocalTransform(position_matrix);
+  Node * sat_hold = new Node("sat_hold", root, position_matrix);
+  root->addChildren(sat_hold);
 
-  geometry_node * sat_geo = new geometry_node();
-  sat_geo->name = "sat_geo";
-  sat_geo->parent = sat_hold;
+  geometry_node * sat_geo = new geometry_node("sat_geo", sat_hold, glm::mat4{});
   sat_hold->addChildren(sat_geo);
+  sat_geo->geo_color = glm::fvec3(0.9f, 0.7f, 0.2f);
   geometry_node_Vector.push_back(sat_geo);
 
-  // Planet Node Uranus------------------------------------------------
+  // Planet Node Uranus---------------------------------------------------------------------------------------------
   // Create hold, which contains position and rotation speed
-  Node * ur_hold = new Node();
-  ur_hold->name ="ur_hold";
-  ur_hold->parent = root;
-  root->addChildren(ur_hold);
   // Uranus position_matrix
   position_matrix = glm::translate(glm::fmat4{}, glm::vec3(25.f, 0.f, 0.f));
   position_matrix = glm::rotate(glm::mat4{}, 5.7f, glm::fvec3{0.0f, 1.0f, 0.0f}) * position_matrix;
-  ur_hold->setLocalTransform(position_matrix);
-
-  geometry_node * ur_geo = new geometry_node();
-  ur_geo->name = "ur_geo";
-  ur_geo->parent = ur_hold;
+  Node * ur_hold = new Node("ur_hold", root, position_matrix);
+  root->addChildren(ur_hold);
+  
+  geometry_node * ur_geo = new geometry_node("ur_geo", ur_hold, glm::mat4{});
   ur_hold->addChildren(ur_geo);
+  ur_geo->geo_color = glm::fvec3(0.3f, 0.6f, 0.7f);
   geometry_node_Vector.push_back(ur_geo);
 
-  // Planet Node Neptune------------------------------------------------
+  // Planet Node Neptune---------------------------------------------------------------------------------------------
   // Create hold, which contains position and rotation speed
-  Node * nep_hold = new Node();
-  nep_hold->name ="nep_hold";
-  nep_hold->parent = root;
-  root->addChildren(nep_hold);
   // Neptune position_matrix
   position_matrix = glm::translate(glm::fmat4{}, glm::vec3(28.f, 0.f, 0.f));
   position_matrix = glm::rotate(glm::mat4{}, 6.f, glm::fvec3{0.0f, 1.0f, 0.0f}) * position_matrix;
-  nep_hold->setLocalTransform(position_matrix);
-
-  geometry_node * nep_geo = new geometry_node();
-  nep_geo->name = "nep_geo";
-  nep_geo->parent = nep_hold;
+  Node * nep_hold = new Node("nep_hold", root, position_matrix);
+  root->addChildren(nep_hold);
+  
+  geometry_node * nep_geo = new geometry_node("nep_geo", nep_hold, glm::mat4{});
   nep_hold->addChildren(nep_geo);
+  nep_geo->geo_color = glm::fvec3(0.1f, 0.1f, 1.f);
   geometry_node_Vector.push_back(nep_geo);
+
+  
 }
 
 
@@ -551,8 +546,8 @@ void ApplicationSolar::mouseCallback(double pos_x, double pos_y) {
     uploadView();
   }
   else{
-    m_view_transform = glm::rotate(m_view_transform, (float)pos_y/80.f, glm::fvec3{1.0f, 0.0f, 0.0f});
-    uploadView();
+    /* m_view_transform = glm::rotate(m_view_transform, (float)pos_y/80.f, glm::fvec3{1.0f, 0.0f, 0.0f});
+    uploadView(); */
   }
 }
 

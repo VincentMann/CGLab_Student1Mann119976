@@ -37,6 +37,10 @@ class Node {
                                 // Node * child = NULL; child = new Node();
                                 // parent->children.push_back(child)
 
+    //Construct
+    Node();
+    Node(string name, Node * parent, glm::mat4 localTransform);
+
 
 };
 

@@ -92,6 +92,21 @@ Node * Node::removeChildren(string child_name){
     return return_child;
 }
 
+//Constructor
+Node::Node()
+    {}
+
+Node::Node(string new_name, Node * new_parent, glm::mat4 new_localTransform):
+    name{new_name},
+    parent{new_parent},
+    depth{new_parent->depth + 1},
+    path{new_parent->path + new_parent->name + ", " + new_name},
+    localTransform{new_localTransform}
+    {
+    }
+
+
+
 
 // Testing the .cpp
 /* int main() {

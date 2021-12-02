@@ -6,6 +6,7 @@
 #include "structs.hpp"
 #include "scene_graph.hpp"
 #include "geometry_node.hpp"
+#include "point_light_node.hpp"
 
 // gpu representation of model
 class ApplicationSolar : public Application {
@@ -53,6 +54,7 @@ class ApplicationSolar : public Application {
 
   // Personal Code
   SceneGraph scene_graph_all;
+  point_light_node * light_all;
   std::vector<geometry_node*> geometry_node_Vector;
   model_object star_object;
   std::vector<float> orbits;
