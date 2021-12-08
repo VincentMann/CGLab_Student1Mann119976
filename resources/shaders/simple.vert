@@ -11,11 +11,14 @@ uniform mat4 ProjectionMatrix;
 uniform mat4 NormalMatrix;
 
 out vec3 pass_Normal, pass_Position;
+out mat4 pass_View, pass_Model;
 
 void main(void)
 {
 	gl_Position = (ProjectionMatrix  * ViewMatrix * ModelMatrix) * vec4(in_Position, 1.0);
 	pass_Normal = (NormalMatrix * vec4(in_Normal, 0.0)).xyz;
 	//Transform the rel. position matrix into our view and model space
-	pass_Position = ((ViewMatrix * ModelMatrix) * vec4(in_Position, 1.0f)).xzy;
+	pass_Position = (ModelMatrix * vec4(in_Position, 1.0f)).xzy;
+	pass_View = ViewMatrix;
+	pass_Model = ModelMatrix;
 }

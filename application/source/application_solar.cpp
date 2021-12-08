@@ -156,7 +156,7 @@ void ApplicationSolar::renderObject(geometry_node * planet_geo) const{
   glUniform3f(location, light_position[0], light_position[1], light_position[2]);
 
   // Camera position:
-  glm::fvec4 cam_position = m_view_transform * glm::fvec4{0.f, 0.f, 0.f, 1.f};
+  glm::fvec4 cam_position = m_view_transform * glm::fvec4(0.f, 0.f, 0.f, 1.f);
   location = glGetUniformLocation(m_shaders.at("planet").handle, "cam_position");
   glUniform3f(location, cam_position[0], cam_position[1], cam_position[2]);
 
@@ -293,9 +293,9 @@ void ApplicationSolar::initializeStars(){
     milky_way.push_back(b);
 
     if(i == 51 ){
-      std::cout<<"STAR POS: "<<x<<", "<<y<<", "<<z<<" \n";
+      /* std::cout<<"STAR POS: "<<x<<", "<<y<<", "<<z<<" \n";
       std::cout<<"STAR COL: "<<r<<", "<<g<<", "<<b<<" \n";
-      std::cout<<"TESTING COL: "<<std::rand() % 255 / 255<<" \n";
+      std::cout<<"TESTING COL: "<<std::rand() % 255 / 255<<" \n"; */
     }
   }
 
@@ -355,6 +355,7 @@ void ApplicationSolar::initializeSceneGraph(){
   // A GEO-NODE stores the planets characterstics. E.g its size set with scale()
 
   glm::mat4 position_matrix;
+  position_matrix = glm::translate({}, glm::vec3(0.f, 0.f, 0.f));
   // SceneGraph
   scene_graph_all = SceneGraph();
   scene_graph_all.name = "Scene";
@@ -364,6 +365,7 @@ void ApplicationSolar::initializeSceneGraph(){
   scene_graph_all.root = root;
   root->setWorldTransform(position_matrix);
 
+
   // Light Node--------------------------------------------------------
   // Create light node, which contains position of light source
 
@@ -371,7 +373,8 @@ void ApplicationSolar::initializeSceneGraph(){
   light_all = new point_light_node("light", root, position_matrix);
   // lightIntensity and lightColor
   light_all->setlightColor(glm::vec3(1.f, 1.f, 0.f));
-  light_all->lightIntensity = 1.f;
+  light_all->lightIntensity = 10.f;
+
 
   // Sun Node--------------------------------------------------------
   // Create hold, which contains position
