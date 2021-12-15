@@ -7,6 +7,8 @@
 #include "scene_graph.hpp"
 #include "geometry_node.hpp"
 #include "point_light_node.hpp"
+#include "pixel_data.hpp"
+#include "texture_loader.hpp"
 
 // gpu representation of model
 class ApplicationSolar : public Application {
@@ -27,7 +29,7 @@ class ApplicationSolar : public Application {
   void render() const;
 
   // Personal Code, draw single object--------------------
-  void renderObject(geometry_node * object) const;
+  void renderObject(geometry_node * object, int count) const;
   void renderPlanetObjects() const;
   void renderStarObjects() const;
   void renderOrbitObjects() const;
@@ -37,6 +39,7 @@ class ApplicationSolar : public Application {
   void initializeGeometry();
   void initializeSceneGraph();
   void initializeStars();
+  void initializeTextures();
   // update uniform values
   void uploadUniforms();
   // upload projection matrix

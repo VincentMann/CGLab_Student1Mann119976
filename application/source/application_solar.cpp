@@ -47,6 +47,7 @@ ApplicationSolar::ApplicationSolar(std::string const& resource_path)
   initializeSceneGraph();
   initializeGeometry();
   initializeStars();
+  initializeTextures();
   initializeShaderPrograms();
 }
 
@@ -83,11 +84,11 @@ void ApplicationSolar::renderPlanetObjects() const{
   for (int i = 0; i < (int)geometry_node_Vector.size(); i++){
     planet_geo = geometry_node_Vector[i];
     // Rendering planet/moon object
-    this->renderObject(planet_geo);
+    this->renderObject(planet_geo, i);
   }
 }
 
-void ApplicationSolar::renderObject(geometry_node * planet_geo) const{
+void ApplicationSolar::renderObject(geometry_node * planet_geo, int object_number) const{
 
   // Each holder already contains the planets relative postion in the solar system, set via translate() ininitializeSceneGraph()
   // This postion can be combined with the already written code to create the planets rotation and revolvement around the sun
@@ -119,8 +120,9 @@ void ApplicationSolar::renderObject(geometry_node * planet_geo) const{
 
 
   // Let the object around its own axis(applied last in matrix calculation)
-  model_matrix = glm::rotate(glm::mat4{}, 0.009f, glm::fvec3{0.0f, 1.0f, 0.0f});
+  model_matrix = glm::rotate(glm::mat4{}, 0.0009f, glm::fvec3{0.0f, 1.0f, 0.0f});
   planet_geo->setLocalTransform(model_matrix*planet_geo->getLocalTransform());
+
 
   glUniformMatrix4fv(m_shaders.at("planet").u_locs.at("ModelMatrix"),
                     1, GL_FALSE, glm::value_ptr(planet_geo->getWorldTransform()));
@@ -159,6 +161,19 @@ void ApplicationSolar::renderObject(geometry_node * planet_geo) const{
   glm::fvec4 cam_position = m_view_transform * glm::fvec4(0.f, 0.f, 0.f, 1.f);
   location = glGetUniformLocation(m_shaders.at("planet").handle, "cam_position");
   glUniform3f(location, cam_position[0], cam_position[1], cam_position[2]);
+
+  //std::cout<<cam_position[0]<<cam_position[1]<<cam_position[2]<<"\n";
+
+
+  // Render Textures
+  // Bind for Accessing
+  glActiveTexture(GL_TEXTURE0);
+  texture_object texture = planet_geo->geo_texture;
+  glBindTexture(texture.target, texture.handle);
+  // Upload Texture Unit data to shader
+  int sampler_location = glGetUniformLocation(m_shaders.at("planet").handle,"current_texture");
+  //glUseProgram(m_shaders.at("planet").handle);
+  glUniform1i(sampler_location, 0);
 
   // draw bound vertex array using bound shader
   glDrawElements(planet_object.draw_mode, planet_object.num_elements, model::INDEX.type, NULL);
@@ -233,7 +248,7 @@ void ApplicationSolar::initializeShaderPrograms() {
 
 // load models
 void ApplicationSolar::initializeGeometry() {
-  model planet_model = model_loader::obj(m_resource_path + "models/sphere.obj", model::NORMAL);
+  model planet_model = model_loader::obj(m_resource_path + "models/sphere.obj", model::NORMAL | model::TEXCOORD);
   
   // generate vertex array object
   glGenVertexArrays(1, &planet_object.vertex_AO);
@@ -255,6 +270,10 @@ void ApplicationSolar::initializeGeometry() {
   glEnableVertexAttribArray(1);
   // second attribute is 3 floats with no offset & stride
   glVertexAttribPointer(1, model::NORMAL.components, model::NORMAL.type, GL_FALSE, planet_model.vertex_bytes, planet_model.offsets[model::NORMAL]);
+
+  // in_Texture_Coor
+  glEnableVertexAttribArray(2);
+  glVertexAttribPointer(2, model::TEXCOORD.components, model::TEXCOORD.type, GL_FALSE, planet_model.vertex_bytes, planet_model.offsets[model::TEXCOORD]);
 
    // generate generic buffer
   glGenBuffers(1, &planet_object.element_BO);
@@ -337,6 +356,42 @@ void ApplicationSolar::initializeStars(){
 }
 // ------------------Personal StarInit--------------------------------------------------------------------------
 
+// ------------------Personal TexInit---------------------------------------------------------------------------
+
+void ApplicationSolar::initializeTextures(){
+  // Get pixel_data
+  geometry_node * planet_geo = new geometry_node();
+  for (int i = 0; i < (int)geometry_node_Vector.size(); i++){
+    planet_geo = geometry_node_Vector[i];
+    pixel_data pixel;
+    try
+    {
+      pixel = texture_loader::file(m_resource_path + "textures/" + planet_geo->name + ".png");
+    }
+    catch(std::exception e)
+    {
+      std::cout<<"Error loading planet: "<< planet_geo->name << '\n';
+    }
+
+    //Initialise Texture
+    texture_object texture;
+    texture.target = GL_TEXTURE_2D;
+
+    glActiveTexture(GL_TEXTURE0);
+    glGenTextures(1, &texture.handle);
+    glBindTexture(texture.target, texture.handle);
+    //Define Texture Sampling Parameters (mandatory)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    //Define Texture Data and Format
+    glTexImage2D(texture.target, 0, pixel.channels, (GLsizei)pixel.width, (GLsizei)pixel.height, 0, pixel.channels, pixel.channel_type, pixel.ptr());
+    planet_geo->geo_texture = texture;
+  }
+}
+
+// ------------------Personal TexInit---------------------------------------------------------------------------
+
+
 // ------------------Personal scenegraph------------------------------------------------------------------------
 
 void ApplicationSolar::initializeSceneGraph(){
@@ -372,8 +427,8 @@ void ApplicationSolar::initializeSceneGraph(){
   position_matrix = glm::translate({}, glm::vec3(0.f, 0.f, 0.f));
   light_all = new point_light_node("light", root, position_matrix);
   // lightIntensity and lightColor
-  light_all->setlightColor(glm::vec3(1.f, 1.f, 0.f));
-  light_all->lightIntensity = 10.f;
+  light_all->setlightColor(glm::vec3(0.5f, 0.5f, 0.f));
+  light_all->lightIntensity = 50.f;
 
 
   // Sun Node--------------------------------------------------------
@@ -462,10 +517,10 @@ void ApplicationSolar::initializeSceneGraph(){
   // Jupiter position_matrix
   position_matrix = glm::translate(glm::fmat4{}, glm::vec3(19.f, 0.f, 0.f));
   position_matrix = glm::rotate(glm::mat4{}, 3.6f, glm::fvec3{0.0f, 1.0f, 0.0f}) * position_matrix;
-  Node * jup_hold = new Node("jup_hold", root, position_matrix);
+  Node * jup_hold = new Node("jupiter_hold", root, position_matrix);
   root->addChildren(jup_hold);
   
-  geometry_node * jup_geo = new geometry_node("jup_geo", jup_hold, glm::mat4{});
+  geometry_node * jup_geo = new geometry_node("jupiter_geo", jup_hold, glm::mat4{});
   jup_hold->addChildren(jup_geo);
   jup_geo->geo_color = glm::fvec3(0.9f, 0.5f, 0.f);
   geometry_node_Vector.push_back(jup_geo);
@@ -475,10 +530,10 @@ void ApplicationSolar::initializeSceneGraph(){
   // Saturn position_matrix
   position_matrix = glm::translate(glm::fmat4{}, glm::vec3(22.f, 0.f, 0.f));
   position_matrix = glm::rotate(glm::mat4{}, 4.9f, glm::fvec3{0.0f, 1.0f, 0.0f}) * position_matrix;
-  Node * sat_hold = new Node("sat_hold", root, position_matrix);
+  Node * sat_hold = new Node("saturn_hold", root, position_matrix);
   root->addChildren(sat_hold);
 
-  geometry_node * sat_geo = new geometry_node("sat_geo", sat_hold, glm::mat4{});
+  geometry_node * sat_geo = new geometry_node("saturn_geo", sat_hold, glm::mat4{});
   sat_hold->addChildren(sat_geo);
   sat_geo->geo_color = glm::fvec3(0.9f, 0.7f, 0.2f);
   geometry_node_Vector.push_back(sat_geo);
@@ -488,10 +543,10 @@ void ApplicationSolar::initializeSceneGraph(){
   // Uranus position_matrix
   position_matrix = glm::translate(glm::fmat4{}, glm::vec3(25.f, 0.f, 0.f));
   position_matrix = glm::rotate(glm::mat4{}, 5.7f, glm::fvec3{0.0f, 1.0f, 0.0f}) * position_matrix;
-  Node * ur_hold = new Node("ur_hold", root, position_matrix);
+  Node * ur_hold = new Node("uranus_hold", root, position_matrix);
   root->addChildren(ur_hold);
   
-  geometry_node * ur_geo = new geometry_node("ur_geo", ur_hold, glm::mat4{});
+  geometry_node * ur_geo = new geometry_node("uranus_geo", ur_hold, glm::mat4{});
   ur_hold->addChildren(ur_geo);
   ur_geo->geo_color = glm::fvec3(0.3f, 0.6f, 0.7f);
   geometry_node_Vector.push_back(ur_geo);
@@ -501,15 +556,14 @@ void ApplicationSolar::initializeSceneGraph(){
   // Neptune position_matrix
   position_matrix = glm::translate(glm::fmat4{}, glm::vec3(28.f, 0.f, 0.f));
   position_matrix = glm::rotate(glm::mat4{}, 6.f, glm::fvec3{0.0f, 1.0f, 0.0f}) * position_matrix;
-  Node * nep_hold = new Node("nep_hold", root, position_matrix);
+  Node * nep_hold = new Node("neptune_hold", root, position_matrix);
   root->addChildren(nep_hold);
   
-  geometry_node * nep_geo = new geometry_node("nep_geo", nep_hold, glm::mat4{});
+  geometry_node * nep_geo = new geometry_node("neptune_geo", nep_hold, glm::mat4{});
   nep_hold->addChildren(nep_geo);
   nep_geo->geo_color = glm::fvec3(0.1f, 0.1f, 1.f);
   geometry_node_Vector.push_back(nep_geo);
 
-  
 }
 
 

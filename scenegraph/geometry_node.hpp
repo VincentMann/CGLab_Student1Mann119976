@@ -9,6 +9,7 @@ class geometry_node : public Node{
     // Values
     model geometry;
     glm::vec3 geo_color;
+    texture_object geo_texture;
 
     // Methods
     model getGeometry();

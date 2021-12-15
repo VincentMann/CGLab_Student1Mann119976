@@ -1,7 +1,9 @@
 #version 150
 
 in vec3 pass_Normal, pass_Position;
-in mat4 pass_View, pass_Model;
+in mat4 pass_Model, pass_View;
+in vec2 pass_Texture_Coor;
+
 out vec4 out_Color;
 
 uniform vec3 geo_color;
@@ -9,6 +11,8 @@ uniform float light_intensity;
 uniform vec3 light_color;
 uniform vec3 cam_position;
 uniform vec3 light_position;
+uniform sampler2D current_texture;
+
 //uniform vec3 current_position;
 
 vec3 ambient_color = vec3(0.1f, 0.1f, 0.1f);
@@ -27,27 +31,28 @@ void main() {
   // Keep in mind that the PLINN-PHONG model states: (RV) -> (NH), where H = L + V is halfway direct
   // and that one I is calculated for R,G,B each
 
-  // pass_Normal is in viewspace(see simple.vert), so multiply cam,light,frag positins with viewMatrix;
 
-  vec3 L = light_position - pass_Position; // Light direction
-
-  //position norm matrix
-
-  vec3 N = pass_Normal;
+  vec3 L = light_position - pass_Position; // Light direction vector
+  vec3 N = pass_Normal; // Normal vector
   float f_att = 1/pow(length(L), 2.f);
 
-  vec3 AMB =  light_color;
+  vec3 AMB =  ambient_color;
   vec3 DIFF = light_intensity * light_color * f_att * max(dot(normalize(L), normalize(N)), 0.f);
 
 
-  vec3 V = cam_position - pass_Position; //View direction
-  vec3 H = L + V; 
-  float spec_pow = 30.f;
+  vec3 V = cam_position - pass_Position; //View direction vector
+  vec3 H = normalize(L) + normalize(V); 
+  float spec_pow = 60.f;
   // more power to light color in spec
   vec3 SPEC = light_intensity * light_color * f_att * pow(max(dot(normalize(N), normalize(H)), 0.f), spec_pow);
 
-  vec3 I = AMB * ambient_color + DIFF * diffuse_color + SPEC * specular_color;
+  // Texture: 
+  vec4 color_from_tex = texture(current_texture, pass_Texture_Coor);
 
-  vec3 result_color = I * geo_color;
+  vec3 I = AMB * ambient_color + DIFF * diffuse_color + SPEC * specular_color;
+  //vec3 I = (AMB + DIFF) * color_from_tex.rgb + SPEC * light_color;;
+
+  vec3 result_color = I * color_from_tex.rgb;
   out_Color = vec4(result_color, 1.0);
+  //out_Color = vec4(texture2D(current_texture, vec2(0.5, 0.5)));
 }
